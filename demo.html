@@ -1,15 +1,116 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN"
-	"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd" >
 
-<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
-<head>
-	<title>demo</title>
-	<script src="jquery.1.4.2.js" type="text/javascript" charset="utf-8"></script>
-	<script src="demo.js" type="text/javascript" charset="utf-8"></script>
-</head>
-<body>
-  
+<html xmlns = "http://www.w3.org/1999/xhtml"xml: lang = "en" >
+<head >
+<title > demo </title>
+	<script src="jquery.1.4.2.js" type="text/javascript " charset="utf - 8 "></script>
+	<script type="text / javascript " src="http:
+//maps.google.com/maps/api/js?sensor=false"></script>
+<script src = "demo.js"type = "text/javascript"charset = "utf-8" > </script>
+	<script type="text/javascript " charset="utf - 8 ">
 
-</body>
+    var points;
+    rad = function(x) {return x*Math.PI/180;}
+
+    distance = function(p1, p2) {
+       var R = 6371; // earth's mean radius in km
+       var dLat  = rad(p2.latitude - p1.latitude);
+       var dLong = rad(p2.longitude - p1.longitude);
+
+       var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+               Math.cos(rad(p1.latitude)) * Math.cos(rad(p2.latitude)) * Math.sin(dLong/2) * Math.sin(dLong/2);
+       var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+       var d = R * c;
+
+       return (d*1000);
+    }
+
+    function jsonFlickrApi(data) {
+     console.log(data);
+     console.log("Calculating Distance ");
+     points = data.photos.photo;
+
+      for(i=0; i < points.length; i++) {
+        current_point = points[i];
+        for(k = i; k < points.length; k++) {
+          next_point = points[k];
+          dist = distance(current_point, next_point);
+          console.log(dist);
+          if (dist < 300.0 && dist > 0) {
+            if (current_point.degree) {
+              current_point.degree+=1;
+            } else {
+              current_point.degree=1;
+            }
+
+            if (next_point.degree) {
+              next_point.degree+=1;
+            } else {
+              next_point.degree=1;
+            }
+
+          } // end if distance < MAX DISTANCE
+        } // end k loop
+      } // end i loop
+
+
+      // Removing Items with degree < MINIMUM DEGREE
+      for(i=0; i < points.length; i++) {
+        if (points[i].degree == null  || points[i].degree < 40 ) {
+          points.splice(i, 1);
+        } 
+      }
+
+
+      // average central point
+      central_lat = points[0].latitude;
+      for (var i=1; i < points.length; i++) {
+        central_lat = (central_lat + points[i].latitude) / 2;
+        // console.log(central_lat);
+      };
+
+      console.log("CENTRAL LAT = "+central_lat);
+
+      central_lng = 0.0;
+      for (var i=0; i < points.length; i++) {
+        central_lng += points[i].longitude;
+      };
+      central_lng = central_lng/points.length;
+
+
+
+      var central_latlng = new google.maps.LatLng(central_lat, central_lng);
+      // var central_latlng = new google.maps.LatLng(points[1].latitude, points[1].longitude);
+
+      var myOptions = {
+        zoom: 15,
+        center: central_latlng,
+        mapTypeId: google.maps.MapTypeId.ROADMAP
+      };
+
+      var map = new google.maps.Map(document.getElementById("map_canvas "),
+          myOptions);
+
+
+    } // end function jsonFlickrApi
+
+	 
+	 
+  	 $.getJSON("http:
+//api.flickr.com/services/rest/?method=flickr.photos.search&api_key=656222a441d1f6305791eeee478796d0&text="+
+"acropolis" +
+"&has_geo=true" +
+"&extras=geo" +
+"&sort=interestingness-desc&format=json&outlier=?");
+
+
+
+
+ < /script>
+</head >
+<body >
+<div id = "map_canvas"style = "height:300px; width: 600px" > </div>
+
+</body >
 </html>
