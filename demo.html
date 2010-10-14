@@ -11,15 +11,36 @@
   <script type="text/javascript " src="http://maps.google.com/maps/api/js?sensor=false"></script>
 	
 	<script type="text/javascript " charset="utf-8 ">
+	  var map;
     var points = [];
     var points_clean = [];
+    var points_markers_array = [];
+    var points_clean_markers_array = [];
+    var central_latlng;
     var MAX_D = 300.0;
-    var MIN_D = 40;
+    var MIN_D = 20;
     var flickr_data; // data from flickr.com
-    var keywords = "Plaka Athens";
+    var keywords = "";
     var loading_starting_timepoint, loading_ending_timepoint, cpu_starting_timepoint, cpu_ending_timepoint, cpu_elapsed_time, loading_elapsed_time;
+    var myOptions = {
+      zoom: 15,
+      mapTypeId: google.maps.MapTypeId.ROADMAP
+    };
+    var rad = function(x) {return x*Math.PI/180;}
     
-    rad = function(x) {return x*Math.PI/180;}
+
+
+    function addMarkerinArray(point, markersArray, size) {
+      latlng = new google.maps.LatLng(point.latitude, point.longitude);
+      var marker_image = 'images/marker_'+size+'.png';
+      marker = new google.maps.Marker({
+        position: latlng, 
+        title: "Degree = "+point.degree+"",
+        icon: marker_image
+      });
+      markersArray.push(marker);
+    }
+    
     
     function distance(p1, p2) {
        var R = 6371; // earth's mean radius in km
@@ -43,21 +64,16 @@
       };
       central_lng = central_lng_sum/points.length;
       central_lat = central_lat_sum/points.length;
-      central_latlng = new google.maps.LatLng(central_lat, central_lng);
-      return central_latlng;
+      console.log(central_lat+" - "+central_lng);
+      if (!central_lat || !central_lng) {
+        return false;
+      } else {
+        central_latlng = new google.maps.LatLng(central_lat, central_lng);
+        return central_latlng;
+      }
     }
-
-    function jsonFlickrApi(data) {
-      flickr_data = data;
-      $('div.loading_wrapper').fadeOut();
-      
-      // json responce HANDLER
-      loading_finishing_timepoint = new Date();    
-      cpu_starting_timepoint = new Date();
-      points = data.photos.photo;
-      $('#points_length').text(points.length);
-      points_clean = [];
-      
+    
+    function assignDegreeToPoints() {
       for(i=0; i < points.length; i++) {
         current_point = points[i];
         for(k = i; k < points.length; k++) {
@@ -76,50 +92,68 @@
             } else {
               next_point.degree=1;
             }
-            
           } // end if distance < MAX DISTANCE
         } // end k loop
       } // end i loop
+    }
+    
+    function displayMarkersArray(markersArray) {
+      for (i in markersArray) {
+        markersArray[i].setMap(map);
+        infowindow = new google.maps.InfoWindow({
+            content: markersArray[i].getTitle()
+        });
+        google.maps.event.addListener(markersArray[i], 'click', function() {
+          infowindow.open(map,markersArray[i]);
+        });
+      }
+    }
 
+    function hideMarkersArray(markersArray) {
+      for (i in markersArray) {
+        markersArray[i].setMap(null);
+      }
+    }
+    
+    function jsonFlickrApi(data) {
+      flickr_data = data;
+      $('div.loading_wrapper').fadeOut();
+      
+      // json responce HANDLER
+      loading_finishing_timepoint = new Date();    
+      cpu_starting_timepoint = new Date();
+      points = data.photos.photo;
+      $('#points_length').text(points.length);
 
-      // Removing Items with degree < MINIMUM DEGREE
+      
+      /****************************************************/
+      /*    OUTLIER DETECTION ALGORITHM on var points     */ 
+      /****************************************************/      
+      assignDegreeToPoints();
       for(i=0; i < points.length; i++) {
         if ((points[i].degree+"") != ""  && points[i].degree > MIN_D ) {
-          console.log(points[i].degree);
           points_clean.push(points[i]);
-        } 
-      }
+          // creating the markers array for the map
+          addMarkerinArray(points[i], points_markers_array, 'medium_black');
+          addMarkerinArray(points[i], points_clean_markers_array, 'medium_red');
+        } else {
+          addMarkerinArray(points[i], points_markers_array, 'medium_black');
+        }
+      }    
       $('#points_clean_length').text(points_clean.length);
+
+      central_latlng = find_central_latlng(points_clean);
       
-      var central_latlng = find_central_latlng(points_clean);
-      
-      
-      // DEFINING THE MAP
-      var myOptions = {
-        zoom: 15,
-        center: central_latlng,
-        mapTypeId: google.maps.MapTypeId.ROADMAP
-      };
-      var map = new google.maps.Map(document.getElementById("map_canvas"), myOptions);
-      
-      
-      // PRINTING THE MARKERS
-      for (var k=0; k < points_clean.length; k++) {
-        my_marker = new google.maps.Marker({
-          position: new google.maps.LatLng(points_clean[k].latitude, points_clean[k].longitude),
-          map: map,
-          title: "Degree = "+points_clean[k].degree+""
-        });  
+      // CENTER MAP
+      if (!central_latlng) {
+        map.setCenter(new google.maps.LatLng(32.32, 32.32));
+        map.setZoom(2);
+      } else {
+        map.setCenter(central_latlng);
       }
       
       // PRINTING THE CENTRAL MARKER
-      central_marker = new google.maps.Marker({
-        position: central_latlng,
-        map: map,
-        title: "Center of CLUSTER",
-        icon: new google.maps.MarkerImage({url: "http://labs.google.com/ridefinder/images/mm_20_purple.png"})
-      });  
-      
+      central_marker = new google.maps.Marker({position: central_latlng, title: "Center of CLUSTER", icon: 'images/marker_extra_large_black.png', map: map});
       
       cpu_finishing_timepoint = new Date();
       cpu_elapsed_time = (cpu_finishing_timepoint - cpu_starting_timepoint);
@@ -130,18 +164,6 @@
 
 	 
  </script>
- <style type="text/css" media="screen">
-  table.info {
-    
-  }
-    table.info td {
-      color: #444;
-    }
-      table.info td span {
-        font-weight: bold;
-        color: #000;
-      }
- </style>
 </head >
 <body >
   <div class="loading_wrapper" style="display:none">
@@ -176,12 +198,29 @@
       $('input#keywords').val(keywords+"");
       $('div.loading_wrapper').show();
       loading_starting_timepoint = new Date();    
-      $.getJSON("http://api.flickr.com/services/rest/?method=flickr.photos.search&api_key=656222a441d1f6305791eeee478796d0&text="+
+      flickr_api_url = "http://api.flickr.com/services/rest/?method=flickr.photos.search&api_key=656222a441d1f6305791eeee478796d0&text="+
       keywords+
       "&has_geo=true" +
       "&extras=geo" +
-      "&sort=interestingness-desc&format=json&outlier=?");
+      "&sort=interestingness-desc&format=json&outlier=?"
+      $.getJSON(flickr_api_url);
+      
+      console.log(flickr_api_url);
+      
+      $("#points_clean_length").toggle(function() {
+        displayMarkersArray(points_clean_markers_array);
+      }, function() {
+        hideMarkersArray(points_clean_markers_array);
+      });
+
+      $("#points_length").toggle(function() {
+        displayMarkersArray(points_markers_array);
+      }, function() {
+        hideMarkersArray(points_markers_array);
+      });
+      
     });
+    map = new google.maps.Map(document.getElementById("map_canvas"), myOptions);
   </script>
 </body >
 </html>
