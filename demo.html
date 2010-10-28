@@ -8,8 +8,9 @@
   
 	<script src="javascripts/jquery.1.4.2.js" type="text/javascript" charset="utf-8 "></script>
 	<script type="text/javascript " src="http://maps.google.com/maps/api/js?sensor=false"></script>
-  <script src="javascripts/backbone.js" type="text/javascript" charset="utf-8"></script>
-  <script src = "javascripts/demo.js"type = "text/javascript"charset = "utf-8" > </script>
+  <!-- <script src="javascripts/backbone.js" type="text/javascript" charset="utf-8"></script> -->
+  <script src="javascripts/convex_hull.js" type="text/javascript" charset="utf-8"></script>
+  <script src="javascripts/lib-jeocrowd.js" type="text/javascript" charset="utf-8"></script>
 	<script type="text/javascript " charset="utf-8 ">
 	  var map;
     var points = [];
@@ -26,143 +27,9 @@
       zoom: 15,
       mapTypeId: google.maps.MapTypeId.ROADMAP
     };
+    var flickr_num_of_pages = 0;
+    var average_form_center;
     var rad = function(x) {return x*Math.PI/180;}
-    
-
-
-    function addMarkerinArray(point, markersArray, size) {
-      latlng = new google.maps.LatLng(point.latitude, point.longitude);
-      var marker_image = 'images/marker_'+size+'.png';
-      marker = new google.maps.Marker({
-        position: latlng, 
-        title: "Degree = "+point.degree+"",
-        icon: marker_image
-      });
-      markersArray.push(marker);
-    }
-    
-    
-    function distance(p1, p2) {
-       var R = 6371; // earth's mean radius in km
-       var dLat  = rad(p2.latitude - p1.latitude);
-       var dLong = rad(p2.longitude - p1.longitude);
-
-       var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-               Math.cos(rad(p1.latitude)) * Math.cos(rad(p2.latitude)) * Math.sin(dLong/2) * Math.sin(dLong/2);
-       var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-       var d = R * c;
-       return (d*1000);
-    }
-
-    function find_central_latlng(points) {
-      // average central point LAT - LNG
-      central_lat_sum = 0.0;
-      central_lng_sum = 0.0;
-      for (var k=0; k < points.length; k++) {
-        central_lat_sum += points[k].latitude;
-        central_lng_sum += points[k].longitude;
-      };
-      central_lng = central_lng_sum/points.length;
-      central_lat = central_lat_sum/points.length;
-      console.log(central_lat+" - "+central_lng);
-      if (!central_lat || !central_lng) {
-        return false;
-      } else {
-        central_latlng = new google.maps.LatLng(central_lat, central_lng);
-        return central_latlng;
-      }
-    }
-    
-    function assignDegreeToPoints() {
-      for(i=0; i < points.length; i++) {
-        current_point = points[i];
-        for(k = i; k < points.length; k++) {
-          next_point = points[k];
-          dist = distance(current_point, next_point);
-          if (dist < MAX_D && dist > 0) {
-            
-            if (current_point.degree) {
-              current_point.degree+=1;
-            } else {
-              current_point.degree=1;
-            }
-
-            if (next_point.degree) {
-              next_point.degree+=1;
-            } else {
-              next_point.degree=1;
-            }
-          } // end if distance < MAX DISTANCE
-        } // end k loop
-      } // end i loop
-    }
-    
-    function displayMarkersArray(markersArray) {
-      for (i in markersArray) {
-        markersArray[i].setMap(map);
-        infowindow = new google.maps.InfoWindow({
-            content: markersArray[i].getTitle()
-        });
-        google.maps.event.addListener(markersArray[i], 'click', function() {
-          infowindow.open(map,markersArray[i]);
-        });
-      }
-    }
-
-    function hideMarkersArray(markersArray) {
-      for (i in markersArray) {
-        markersArray[i].setMap(null);
-      }
-    }
-    
-    function jsonFlickrApi(data) {
-      flickr_data = data;
-      $('div.loading_wrapper').fadeOut();
-      
-      // json responce HANDLER
-      loading_finishing_timepoint = new Date();    
-      cpu_starting_timepoint = new Date();
-      points = data.photos.photo;
-      $('#points_length').text(points.length);
-
-      
-      /****************************************************/
-      /*    OUTLIER DETECTION ALGORITHM on var points     */ 
-      /****************************************************/      
-      assignDegreeToPoints();
-      for(i=0; i < points.length; i++) {
-        if ((points[i].degree+"") != ""  && points[i].degree > MIN_D ) {
-          points_clean.push(points[i]);
-          // creating the markers array for the map
-          addMarkerinArray(points[i], points_markers_array, 'medium_black');
-          addMarkerinArray(points[i], points_clean_markers_array, 'medium_red');
-        } else {
-          addMarkerinArray(points[i], points_markers_array, 'medium_black');
-        }
-      }    
-      $('#points_clean_length').text(points_clean.length);
-
-      central_latlng = find_central_latlng(points_clean);
-      
-      // CENTER MAP
-      if (!central_latlng) {
-        map.setCenter(new google.maps.LatLng(32.32, 32.32));
-        map.setZoom(2);
-      } else {
-        map.setCenter(central_latlng);
-      }
-      
-      // PRINTING THE CENTRAL MARKER
-      central_marker = new google.maps.Marker({position: central_latlng, title: "Center of CLUSTER", icon: 'images/marker_extra_large_black.png', map: map});
-      
-      cpu_finishing_timepoint = new Date();
-      cpu_elapsed_time = (cpu_finishing_timepoint - cpu_starting_timepoint);
-      loading_elapsed_time = (loading_finishing_timepoint - loading_starting_timepoint);
-      $("span#cpu_time").text(cpu_elapsed_time+" ms");
-      $("span#loading_time").text(loading_elapsed_time+" ms");
-    } // end function jsonFlickrApi
-
-	 
  </script>
 </head >
 <body >
@@ -186,7 +53,10 @@
       <td>Process Time: <span id="cpu_time"></span></td>
       <td> || </td>
       <td>Loading Time: <span id="loading_time"></span></td>
-    </tr>
+      <td> || </td>
+      <td>Page: <span id="flickr_current_page_number"></span> of <span id="flickr_num_of_pages"></span></td>
+      <td><a type="button" id="jeocrowd_search_next_page" href="">Next Page</a></td>
+    </tr> 
   </table>
   
   <div id="map_canvas" style="height:600px; width: 100%" > </div>
@@ -197,16 +67,10 @@
       keywords = loc.substr(loc.indexOf("=")+1, loc.length);
       $('input#keywords').val(keywords+"");
       $('div.loading_wrapper').show();
-      loading_starting_timepoint = new Date();    
-      flickr_api_url = "http://api.flickr.com/services/rest/?method=flickr.photos.search&api_key=656222a441d1f6305791eeee478796d0&text="+
-      keywords+
-      "&has_geo=true" +
-      "&extras=geo" +
-      "&sort=interestingness-desc&format=json&outlier=?"
-      $.getJSON(flickr_api_url);
+
+      jeocrowdSearch(keywords, 1);
       
-      console.log(flickr_api_url);
-      
+      // UI UX - EVENTS CLICKS TOGGLES CHANGE
       $("#points_clean_length").toggle(function() {
         displayMarkersArray(points_clean_markers_array);
       }, function() {
@@ -219,6 +83,9 @@
         hideMarkersArray(points_markers_array);
       });
       
+      $("a#jeocrowd_search_next_page").click(function() {
+        $('div.loading_wrapper').show();
+      });
     });
     map = new google.maps.Map(document.getElementById("map_canvas"), myOptions);
   </script>
