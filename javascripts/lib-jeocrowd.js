@@ -6,6 +6,17 @@ function jeocrowdSearch(keywords, flickr_page_number) {
   "&extras=geo" +
   "&page="+flickr_page_number+
   "&sort=date-taken-desc&format=json&outlier=?";
+  
+  
+  /************** TESTING MODE **************/
+  // $.getJSON('flickr_data_demo.json', function(data) {
+  //   jsonFlickrApi(data);
+  // });
+  // console.log("On TESTING MODE");
+  // return true;
+  /*********** END OF TESTING MODE **********/
+  
+  
   $.getJSON(flickr_api_url);
   console.log(flickr_api_url);
   return true;
@@ -127,6 +138,10 @@ function jsonFlickrApi(data) {
   assignDegreeToPoints();
   for(i=0; i < points.length; i++) {
     if ((points[i].degree+"") != ""  && points[i].degree > MIN_D ) {
+      // apply X, Y to point objects to comply with the convex_hull library
+      points[i].x = points[i].longitude;
+      points[i].y = points[i].latitude;
+      
       points_clean.push(points[i]);
       // creating the markers array for the map
       addMarkerinArray(points[i], points_markers_array, 'medium_black');
@@ -139,6 +154,8 @@ function jsonFlickrApi(data) {
   
   central_latlng = find_central_latlng();
   average_from_center = averageFromCenter();
+  calculateConvexHull(points_clean, "#f00");
+  
   
   // CENTER MAP
   if (!central_latlng) {
@@ -147,6 +164,7 @@ function jsonFlickrApi(data) {
   } else {
     map.setCenter(central_latlng);
   }
+  
   
   // area = calculateConvexHull(points_clean, "red");
   

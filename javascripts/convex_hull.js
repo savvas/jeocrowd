@@ -148,8 +148,22 @@ new GLatLng(37.457801,-122.117583)
   function sortPointY(a,b) { return a.y - b.y; }
 
   function DrawHull(cur_points, color) {
-     chainHull_2D( cur_points, cur_points.length, hullPoints );
-     polygon = new GPolygon(hullPoints, color , 2, 1.0, color);
-     map.addOverlay(polygon);
+     console.log("We start calculating the convex hull for: "+cur_points.length+" points");
+     foo = chainHull_2D(cur_points, cur_points.length, hullPoints );
+     console.log("foo-"+foo);
+     polygon_path = [];
+     for (var k=0; k < hullPoints.length; k++) {
+       polygon_path.push(new google.maps.LatLng(hullPoints[k].y, hullPoints[k].x));
+     }
+     
+     polygon = new google.maps.Polygon({
+         paths: polygon_path,
+         strokeColor: "#000",
+         strokeOpacity: 0.1,
+         strokeWeight: 2,
+         fillColor: color,
+         fillOpacity: 0.1
+       });
+     polygon.setMap(map);
      return polygon;
   }
