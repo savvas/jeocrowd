@@ -102,6 +102,8 @@ function displayMarkersArray(markersArray) {
 }
 
 function averageFromCenter () {
+  console.log("center point object=");
+  console.log(central_latlng);
   center_point = {
     latitude  : central_latlng.lat(), 
     longitude : central_latlng.lng()
@@ -153,17 +155,20 @@ function jsonFlickrApi(data) {
   
   
   central_latlng = find_central_latlng();
-  average_from_center = averageFromCenter();
-  calculateConvexHull(points_clean, "#f00");
-  
-  
-  // CENTER MAP
   if (!central_latlng) {
     map.setCenter(new google.maps.LatLng(32.32, 32.32));
     map.setZoom(2);
+    alert("No result from the this cluster.");
   } else {
+    average_from_center = averageFromCenter();
+    calculateConvexHull(points_clean, "#f00");
     map.setCenter(central_latlng);
+    map.setZoom(14);
+    central_marker = new google.maps.Marker({position: central_latlng, title: "Center of CLUSTER", icon: 'images/marker_extra_large_black.png', map: map});
   }
+  
+  
+  
   
   
   // area = calculateConvexHull(points_clean, "red");
@@ -171,7 +176,6 @@ function jsonFlickrApi(data) {
   // point_vs_area_to_display = point_vs_area_to_display();
   
   // PRINTING THE CENTRAL MARKER
-  central_marker = new google.maps.Marker({position: central_latlng, title: "Center of CLUSTER", icon: 'images/marker_extra_large_black.png', map: map});
   
   cpu_finishing_timepoint = new Date();
   cpu_elapsed_time = (cpu_finishing_timepoint - cpu_starting_timepoint);
